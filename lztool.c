@@ -24,16 +24,16 @@ unsigned char *compressdBuf(char *src, size_t srcLen, int *res, size_t *bufLen,
 	size_t propsSize;
 	unsigned char *dest;
 
-	propsSize = LZMA_PROPS_SIZE;
+	propsSize = LZMA2_PROPS_SIZE;
 	*bufLen = srcLen + srcLen / 3 + 128;
 	dest = (unsigned char *)malloc(propsSize + *bufLen);
 	*res =
-	    LzmaCompress((unsigned char *)(dest + LZMA_PROPS_SIZE), bufLen,
+	    LzmaCompress((unsigned char *)(dest + LZMA2_PROPS_SIZE), bufLen,
 			 (unsigned char *)src, srcLen, dest, &propsSize,
 			 p->level, p->dictSize, p->lc, p->lp, p->pb, p->fb,
 			 p->numThreads);
 
-	*bufLen = *bufLen + LZMA_PROPS_SIZE;
+	*bufLen = *bufLen + LZMA2_PROPS_SIZE;
 	setLzmaHeader(dest, srcLen, p);
 
 	return dest;
@@ -45,10 +45,10 @@ unsigned char *expandBuf(unsigned char *src, size_t *srcLen, size_t *destSize,
 	unsigned char *outBuf;
 
 	outBuf = (unsigned char *)malloc(*destSize);
-	*srcLen = *srcLen - LZMA_PROPS_SIZE;
+	*srcLen = *srcLen - LZMA2_PROPS_SIZE;
 	*res = LzmaUncompress(outBuf, destSize,
-			      (unsigned char *)(src + LZMA_PROPS_SIZE), srcLen,
-			      src, LZMA_PROPS_SIZE);
+			      (unsigned char *)(src + LZMA2_PROPS_SIZE), srcLen,
+			      src, LZMA2_PROPS_SIZE);
 
 	return outBuf;
 }
@@ -104,10 +104,12 @@ int expandFile(char *inFile, char *outFile, struct comprProps *p)
 	FILE *file;
 	int res;
 
+	printf("out:%s\n", outFile);
 	file = fopen(outFile, "wb");
 	inBuf = file2Buf(inFile, &fSize);
 	readHeader(inBuf, &outLen, p);
 	outBuf = expandBuf(inBuf, &fSize, &outLen, &res);
+	printf("%ld, %ld, %s, %s\n", sizeof(char), outLen, inFile, outFile);
 	fwrite(outBuf, sizeof(char), outLen, file);
 	fclose(file);
 	free(inBuf);
@@ -144,4 +146,17 @@ int readHeader(unsigned char *data, size_t *dstLen, struct comprProps *p)
 	     p->lc, p->pb, p->lp, p->dictSize / 1024, *dstLen / 1024);
 
 	return 0;
+}
+
+void
+setCompressProps(int level, unsigned dictSize, int lc, int lp, int pb,
+		 int fb, int numThreads, struct comprProps *p)
+{
+	p->level = level;
+	p->dictSize = dictSize;
+	p->lc = lc;
+	p->lp = lp;
+	p->pb = pb;
+	p->fb = fb;
+	p->numThreads = numThreads;
 }

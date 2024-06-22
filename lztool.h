@@ -1,6 +1,6 @@
 /* main.c */
 #define LZMA_DIC_MIN (1 << 12)
-#define LZMA_PROPS_SIZE 13	//The correct size
+#define LZMA2_PROPS_SIZE 13	//The correct size
 
 struct comprProps {
 	unsigned dictSize;

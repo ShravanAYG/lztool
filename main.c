@@ -4,59 +4,72 @@
 #include <LzmaLib.h>
 #include "lztool.h"
 
-void
-setCompressProps(int level, unsigned dictSize, int lc, int lp, int pb,
-		 int fb, int numThreads, struct comprProps *p)
+void printHelp(char *pName)
 {
-	p->level = level;
-	p->dictSize = dictSize;
-	p->lc = lc;
-	p->lp = lp;
-	p->pb = pb;
-	p->fb = fb;
-	p->numThreads = numThreads;
+	printf("Usage: %s [OPTION]... [FILE]...\n\
+Compress or decompress FILEs in the .lzma2 format.\n\n\
+  -z, --compress\tforce compression\n\
+  -d, --decompress\tforce decompression\n\
+  -t, --test\t\ttest compressed file integrity\n\
+  -l, --list\t\tlist information about .xz files\n\
+  -k, --keep\t\tkeep (don't delete) input files\n\
+  -f, --force\t\tforce overwrite of output file and (de)compress links\n\
+  -c, --stdout\t\twrite to standard output and don't delete input files\n\
+  -0 ... -9\t\tcompression preset; default is 6; take compressor *and*\n\
+\t\t\tdecompressor memory usage into account before using 7-9!\n\
+  -e, --extreme\t\ttry to improve compression ratio by using more CPU time;\n\
+\t\t\tdoes not affect decompressor memory requirements\n\
+  -T, --threads=NUM\tuse at most NUM threads; the default is 1; set to 0\n\
+\t\t\tto use as many threads as there are processor cores\n\
+  -q, --quiet\t\tsuppress warnings; specify twice to suppress errors too\n\
+  -v, --verbose\t\tbe verbose; specify twice for even more verbose\n\
+  -h, --help\t\tdisplay this short help and exit\n\
+  -H, --long-help\tdisplay the long help (lists also the advanced options)\n\
+  -V, --version\t\tdisplay the version number and exit\n\n\
+With no FILE, or when FILE is -, read standard input.\n\n\
+Report bugs to <shravanay205@gmail.com>.\n\
+lztools home page: <https://github.com/ShravanAYG/lztool>\n", pName);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
 	printf("LZMA2 compress test by Shravan A Y\n\n");
 
-	int sel, errno;
-	char inFile[256], outFile[256];
-	struct comprProps props, pr2;
+	int errno;
+	char outFile[256];
+	struct comprProps props, outprops;
 
 	setCompressProps(5, 4, 3, 0, 2, 32, 1, &props);
 	errno = 0;
-	printf("1) Compress\n2) Decompress\nYour Option: ");
-	fscanf(stdin, "%d", &sel);
-	switch (sel) {
-	case 1:
-		printf("Enter file name: ");
-		fscanf(stdin, "%s", inFile);
-		if (compressFile(inFile, outFile, &props) != SZ_OK)
-			printf("ERROR%d: Compression failed!", errno++);
-		break;
-	case 2:
-		printf("Enter lzma2 file name: ");
-		fscanf(stdin, "%s", inFile);
-		printf("Write output to ");
-		strcpy(outFile, inFile);
-		outFile[strlen(inFile) - 6] = '\0';
-		printf("%s ? (yes = 1, no = 2): ", outFile);
-		fscanf(stdin, "%d", &sel);
-		if (sel == 1)
-			expandFile(inFile, outFile, &pr2);
-		else if (sel == 2) {
-			printf("Write output to: ");
-			fscanf(stdin, "%s", outFile);
-			expandFile(inFile, outFile, &pr2);
+
+	for (int i = 1; i < argc && errno == 0; i++) {
+		if (!strcmp(argv[i], "--compress") || !strcmp(argv[i], "-z")) {
+			if (i + 1 < argc) {
+				if (compressFile(argv[i + 1], outFile, &props)
+				    != SZ_OK)
+					printf("ERROR%d: Compression failed!",
+					       errno++);
+				i++;
+			}
+
+		} else if (!strcmp(argv[i], "--decompress")
+			   || !strcmp(argv[i], "-d")) {
+			if (i + 1 < argc) {
+				strcpy(outFile, argv[i + 1]);
+				outFile[strlen(argv[i + 1]) - 6] = '\0';
+				if (expandFile(argv[i + 1], outFile, &outprops)
+				    != SZ_OK)
+					printf("ERROR%d: decompression failed!",
+					       errno++);
+				i++;
+			}
+		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+			printHelp(argv[0]);
 		} else
 			printf("ERROR%d: Unknown option\n", errno++);
-		break;
-	default:
-		printf("ERROR%d: Unknown option\n", errno++);
-		break;
+
 	}
+
 	if (errno == 0)
 		return 0;
 	printf("Program exited with %d errors\n", errno);
