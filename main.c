@@ -35,21 +35,23 @@ int main(int argc, char *argv[])
 {
 	printf("LZMA2 compress test by Shravan A Y\n\n");
 
-	int errno;
-	char outFile[256];
+	int err_no = 0, keep = 1;
+	char outFile[256], inFile[256];
 	struct comprProps props, outprops;
 
 	setCompressProps(5, 4, 3, 0, 2, 32, 1, &props);
-	errno = 0;
+	err_no = 0;
 
-	for (int i = 1; i < argc && errno == 0; i++) {
+	for (int i = 1; i < argc && err_no == 0; i++) {
 		if (!strcmp(argv[i], "--compress") || !strcmp(argv[i], "-z")) {
 			if (i + 1 < argc) {
 				if (compressFile(argv[i + 1], outFile, &props)
 				    != SZ_OK)
-					printf("ERROR%d: Compression failed!",
-					       errno++);
+					printf("ERROR%d: Compression failed!\n",
+					       err_no++);
 				i++;
+				strcpy(inFile, argv[i]);
+				keep = 0;
 			}
 
 		} else if (!strcmp(argv[i], "--decompress")
@@ -57,21 +59,34 @@ int main(int argc, char *argv[])
 			if (i + 1 < argc) {
 				strcpy(outFile, argv[i + 1]);
 				outFile[strlen(argv[i + 1]) - 6] = '\0';
-				if (expandFile(argv[i + 1], outFile, &outprops)
-				    != SZ_OK)
-					printf("ERROR%d: decompression failed!",
-					       errno++);
-				i++;
+				if (!fileExists(outFile)) {
+					if (expandFile
+					    (argv[i + 1], outFile, &outprops)
+					    != SZ_OK)
+						printf
+						    ("ERROR%d: decompression failed!",
+						     err_no++);
+					i++;
+					strcpy(inFile, argv[i]);
+					keep = 0;
+				} else
+					printf
+					    ("ERROR%d: File %s alredy exists\n",
+					     err_no++, outFile);
 			}
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printHelp(argv[0]);
+		} else if (!strcmp(argv[i], "--keep") || !strcmp(argv[i], "-k")) {
+			keep = 1;
 		} else
-			printf("ERROR%d: Unknown option\n", errno++);
+			printf("ERROR%d: Unknown option\n", err_no++);
 
 	}
+	if (keep == 0 && err_no == 0)
+		remove(inFile);
 
-	if (errno == 0)
+	if (err_no == 0)
 		return 0;
-	printf("Program exited with %d errors\n", errno);
+	printf("Program exited with %d errors\n", err_no);
 	return 1;
 }

@@ -89,8 +89,12 @@ int compressFile(char *inFile, char *outFile, struct comprProps *p)
 	outBuf = compressdBuf(inBuf, bufSize, &res, &outLen, p);
 	strcpy(outFile, inFile);
 	strcat(outFile, ".lzma2");
-
-	buf2File(outFile, outLen, outBuf);
+	if (!fileExists(outFile))
+		buf2File(outFile, outLen, outBuf);
+	else {
+		printf("Compressed file %s alredy available\n", outFile);
+		res = -1;
+	}
 	free(inBuf);
 	free(outBuf);
 
@@ -104,12 +108,10 @@ int expandFile(char *inFile, char *outFile, struct comprProps *p)
 	FILE *file;
 	int res;
 
-	printf("out:%s\n", outFile);
 	file = fopen(outFile, "wb");
 	inBuf = file2Buf(inFile, &fSize);
 	readHeader(inBuf, &outLen, p);
 	outBuf = expandBuf(inBuf, &fSize, &outLen, &res);
-	printf("%ld, %ld, %s, %s\n", sizeof(char), outLen, inFile, outFile);
 	fwrite(outBuf, sizeof(char), outLen, file);
 	fclose(file);
 	free(inBuf);
@@ -159,4 +161,14 @@ setCompressProps(int level, unsigned dictSize, int lc, int lp, int pb,
 	p->pb = pb;
 	p->fb = fb;
 	p->numThreads = numThreads;
+}
+
+int fileExists(char *fName)
+{
+	FILE *file;
+	if ((file = fopen(fName, "r"))) {
+		fclose(file);
+		return 1;
+	}
+	return 0;
 }
