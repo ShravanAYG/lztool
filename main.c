@@ -82,6 +82,12 @@ int main(int argc, char *argv[])
 			printf("ERROR%d: Unknown option\n", err_no++);
 
 	}
+
+	if (argc == 1) {
+		if (compressFile("/dev/stdin", "stdin.lzma2", &props)
+		    != SZ_OK)
+			printf("ERROR%d: Compression failed!\n", err_no++);
+	}
 	if (keep == 0 && err_no == 0)
 		remove(inFile);
 

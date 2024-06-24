@@ -80,15 +80,22 @@ void buf2File(char *fName, size_t size, unsigned char *buf)
 
 int compressFile(char *inFile, char *outFile, struct comprProps *p)
 {
-	char *inBuf;
+	char *inBuf, buffer[65536];
 	unsigned char *outBuf;
 	size_t bufSize, outLen;
 	int res;
 
-	inBuf = (char *)file2Buf(inFile, &bufSize);
+	if (!strcmp(inFile, "/dev/stdin")) {
+		bufSize = fread(buffer, sizeof(char), 65536, stdin);
+		inBuf = (char *)calloc(sizeof(unsigned char *), bufSize);
+		memcpy(inBuf, buffer, bufSize);
+		printf("size:%ld\n", bufSize);
+	} else {
+		inBuf = (char *)file2Buf(inFile, &bufSize);
+		strcpy(outFile, inFile);
+		strcat(outFile, ".lzma2");
+	}
 	outBuf = compressdBuf(inBuf, bufSize, &res, &outLen, p);
-	strcpy(outFile, inFile);
-	strcat(outFile, ".lzma2");
 	if (!fileExists(outFile))
 		buf2File(outFile, outLen, outBuf);
 	else {
