@@ -53,6 +53,57 @@ unsigned char *expandBuf(unsigned char *src, size_t *srcLen, size_t *destSize,
 	return outBuf;
 }
 
+struct fnode {
+	char *cont;
+	size_t size;
+	struct fnode *next;
+};
+
+char *largeFile(FILE * file, size_t *bsize)
+{
+	size_t size;
+	int nnode = 0, i = 0;
+	struct fnode *s_ptr, *n_node;
+	char tmp[65536], *buffer;
+
+	s_ptr = n_node = malloc(sizeof(struct fnode));
+
+	while (1) {
+		size = fread(tmp, sizeof(char), 65536, file);
+		if (size == 0)
+			break;
+
+		n_node->cont = (char *)calloc(size, sizeof(char));
+		n_node->size = size;
+		memcpy(n_node->cont, tmp, size);
+
+		if (size == 65536) {
+			n_node->next =
+			    (struct fnode *)malloc(sizeof(struct fnode));
+			n_node = n_node->next;
+			nnode++;
+		} else {
+			n_node->next = NULL;
+			break;
+		}
+	}
+
+	*bsize = size + (nnode * 65536);
+	buffer = (char *)calloc(*bsize, sizeof(char));
+
+	n_node = s_ptr;
+	while (n_node != NULL) {
+		memcpy(&buffer[i * 65536], n_node->cont, n_node->size);
+		struct fnode *temp = n_node;
+		n_node = n_node->next;
+		free(temp->cont);
+		free(temp);
+		i++;
+	}
+
+	return buffer;
+}
+
 unsigned char *file2Buf(char *fName, size_t *size)
 {
 	FILE *file;
@@ -80,16 +131,13 @@ void buf2File(char *fName, size_t size, unsigned char *buf)
 
 int compressFile(char *inFile, char *outFile, struct comprProps *p)
 {
-	char *inBuf, buffer[65536];
+	char *inBuf;
 	unsigned char *outBuf;
 	size_t bufSize, outLen;
 	int res;
 
 	if (!strcmp(inFile, "/dev/stdin")) {
-		bufSize = fread(buffer, sizeof(char), 65536, stdin);
-		inBuf = (char *)calloc(sizeof(unsigned char *), bufSize);
-		memcpy(inBuf, buffer, bufSize);
-		printf("size:%ld\n", bufSize);
+		inBuf = largeFile(stdin, &bufSize);
 	} else {
 		inBuf = (char *)file2Buf(inFile, &bufSize);
 		strcpy(outFile, inFile);
