@@ -21,4 +21,5 @@ int readHeader(unsigned char *LzData, size_t *destLen,
 	       struct comprProps *properties);
 void setCompressProps(int level, unsigned dictSize, int lc, int lp, int pb,
 		      int fb, int numThreads, struct comprProps *properties);
+char *largeFile(size_t *bufferSize, FILE * file);
 int fileExists(char *fName);

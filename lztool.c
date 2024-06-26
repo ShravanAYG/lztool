@@ -4,6 +4,8 @@
 #include <LzmaLib.h>
 #include "lztool.h"
 
+#define BLOCK_SIZE 65536
+
 void setLzmaHeader(unsigned char *LzData, size_t srcLen, struct comprProps *p)
 {
 	int i;
@@ -18,8 +20,8 @@ void setLzmaHeader(unsigned char *LzData, size_t srcLen, struct comprProps *p)
 	}
 }
 
-unsigned char *compressdBuf(char *src, size_t srcLen, int *res, size_t *bufLen,
-			    struct comprProps *p)
+unsigned char *compressdBuf(char *src, size_t srcLen, int *res,
+			    size_t *bufLen, struct comprProps *p)
 {
 	size_t propsSize;
 	unsigned char *dest;
@@ -39,16 +41,16 @@ unsigned char *compressdBuf(char *src, size_t srcLen, int *res, size_t *bufLen,
 	return dest;
 }
 
-unsigned char *expandBuf(unsigned char *src, size_t *srcLen, size_t *destSize,
-			 int *res)
+unsigned char *expandBuf(unsigned char *src, size_t *srcLen,
+			 size_t *destSize, int *res)
 {;
 	unsigned char *outBuf;
 
 	outBuf = (unsigned char *)malloc(*destSize);
 	*srcLen = *srcLen - LZMA2_PROPS_SIZE;
 	*res = LzmaUncompress(outBuf, destSize,
-			      (unsigned char *)(src + LZMA2_PROPS_SIZE), srcLen,
-			      src, LZMA2_PROPS_SIZE);
+			      (unsigned char *)(src + LZMA2_PROPS_SIZE),
+			      srcLen, src, LZMA2_PROPS_SIZE);
 
 	return outBuf;
 }
@@ -59,46 +61,40 @@ struct fnode {
 	struct fnode *next;
 };
 
-char *largeFile(FILE * file, size_t *bsize)
+char *largeFile(size_t *bufferSize, FILE * file)
 {
 	size_t size;
-	int nnode = 0, i = 0;
-	struct fnode *s_ptr, *n_node;
-	char tmp[65536], *buffer;
+	int nBlocks;
+	char *buffer;
+	void *temp;
 
-	s_ptr = n_node = malloc(sizeof(struct fnode));
+	buffer = (char *)malloc(BLOCK_SIZE);
+	if (!buffer) {
+		return NULL;
+	}
 
+	nBlocks = 0;
 	while (1) {
-		size = fread(tmp, sizeof(char), 65536, file);
-		if (size == 0)
-			break;
-
-		n_node->cont = (char *)calloc(size, sizeof(char));
-		n_node->size = size;
-		memcpy(n_node->cont, tmp, size);
-
-		if (size == 65536) {
-			n_node->next =
-			    (struct fnode *)malloc(sizeof(struct fnode));
-			n_node = n_node->next;
-			nnode++;
+		size =
+		    fread(&buffer[nBlocks * BLOCK_SIZE], sizeof(char),
+			  BLOCK_SIZE, file);
+		if (size == BLOCK_SIZE) {
+			nBlocks++;
+			temp = realloc(buffer, ((nBlocks + 1) * BLOCK_SIZE));
+			if (!temp) {
+				free(buffer);
+				return NULL;
+			}
+			buffer = (char *)temp;
 		} else {
-			n_node->next = NULL;
 			break;
 		}
 	}
 
-	*bsize = size + (nnode * 65536);
-	buffer = (char *)calloc(*bsize, sizeof(char));
-
-	n_node = s_ptr;
-	while (n_node != NULL) {
-		memcpy(&buffer[i * 65536], n_node->cont, n_node->size);
-		struct fnode *temp = n_node;
-		n_node = n_node->next;
-		free(temp->cont);
-		free(temp);
-		i++;
+	*bufferSize = size + (nBlocks * BLOCK_SIZE);
+	temp = realloc(buffer, *bufferSize);
+	if (temp) {
+		buffer = (char *)temp;
 	}
 
 	return buffer;
@@ -137,7 +133,7 @@ int compressFile(char *inFile, char *outFile, struct comprProps *p)
 	int res;
 
 	if (!strcmp(inFile, "/dev/stdin")) {
-		inBuf = largeFile(stdin, &bufSize);
+		inBuf = largeFile(&bufSize, stdin);
 	} else {
 		inBuf = (char *)file2Buf(inFile, &bufSize);
 		strcpy(outFile, inFile);
