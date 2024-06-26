@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 {
 	printf("LZMA2 compress test by Shravan A Y\n\n");
 
-	int err_no = 0, keep = 1;
+	int err_no = 0, keep = 1, level = 5;
 	char outFile[256], inFile[256];
 	struct comprProps props, outprops;
 
@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
 
 	for (int i = 1; i < argc && err_no == 0; i++) {
 		if (!strcmp(argv[i], "--compress") || !strcmp(argv[i], "-z")) {
+			printf("Compressing using level %d\n", props.level);
 			if (i + 1 < argc) {
 				if (compressFile(argv[i + 1], outFile, &props)
 				    != SZ_OK)
@@ -78,6 +79,10 @@ int main(int argc, char *argv[])
 			printHelp(argv[0]);
 		} else if (!strcmp(argv[i], "--keep") || !strcmp(argv[i], "-k")) {
 			keep = 1;
+		} else if (*argv[i] == '-') {
+			level = argv[i][1] - '0';
+			if (level >= 0 && level <= 9)
+				props.level = level;
 		} else
 			printf("ERROR%d: Unknown option\n", err_no++);
 
