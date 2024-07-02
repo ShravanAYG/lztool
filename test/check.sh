@@ -4,5 +4,6 @@ then
 	echo Files are correct! Checksum Matched!
 else
 	echo Check failed!
+ 	return 1
 fi
 
