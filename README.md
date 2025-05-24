@@ -13,3 +13,4 @@ Multiple files or directories can be compressed by creating a `tar` archieve and
 
 # Screenshot
 <image src="test/Screenshot.png"/>
+
